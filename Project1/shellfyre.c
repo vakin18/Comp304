@@ -631,6 +631,77 @@ int process_command(struct command_t *command)
 			}
 		}
 	}
+	
+	if (strcmp(command->name, "joker") == 0)
+	{
+		/**
+		 * Opens temporary file to schedule crontab task
+		 */
+		FILE *file = fopen("cronFile", "w");
+		fprintf(file, "*/15 * * * *  XDG_RUNTIME_DIR=/run/user/$(id -u) notify-send \"$(curl https://icanhazdadjoke.com)\"\n");
+		fclose(file);
+
+		pid_t pid = fork();
+		if (pid == 0) // child
+		{
+			/**
+			 * Schedules crontab task
+			 */
+			char *cronArgs[3];
+			cronArgs[0] = "crontab";
+			cronArgs[1] = "cronFile";
+			cronArgs[2] = NULL;
+			execv("/bin/crontab", cronArgs);
+			exit(0);
+		}
+		else
+		{
+			wait(NULL);
+			pid = fork();
+			if (pid == 0) // child
+			{
+				/**
+				 * Removes temporary file
+				 */
+				char *removeArgs[3];
+				removeArgs[0] = "rm";
+				removeArgs[1] = "cronFile";
+				removeArgs[2] = NULL;
+				execv("/bin/rm", removeArgs);
+				exit(0);
+			}
+			else // parent
+			{
+				wait(NULL);
+				return SUCCESS;
+			}
+		}
+	}
+
+	if (strcmp(command->name, "joke") == 0)
+	{
+		/**
+		 * Prints one joke
+		 */
+		pid_t pid = fork();
+
+		if (pid == 0) // child
+		{
+			char *curlArgs[3];
+			curlArgs[0] = "curl";
+			curlArgs[1] = "https://icanhazdadjoke.com";
+			curlArgs[2] = NULL;
+
+			execv("/bin/curl", curlArgs);
+		}
+		else
+		{
+			wait(NULL);
+			printf("\n");
+		}
+		return SUCCESS;
+	}
+	
 	// Custom commands until here
 
 	pid_t pid = fork();
