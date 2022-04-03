@@ -11,7 +11,7 @@
 #include <fcntl.h>
 const char *sysname = "shellfyre";
 char *directory_history = "/home/vedat/dirhist.txt";
-char *records = "/media/sf_Shared_Folder/Project1/hotandcoldrecord.txt";
+char *records = "/home/vedat/hotandcoldrecord.txt";
 
 enum return_codes
 {
@@ -323,6 +323,8 @@ int process_command(struct command_t *command);
 
 // Helper methods
 void save_directory();
+void update_records(int record);
+int get_record();
 
 int main()
 {
@@ -371,6 +373,51 @@ void save_directory()
 		wait(NULL);
 }
 
+void update_records(int record)
+{
+	/**
+	 * Updates records file with new record
+	 */
+	pid_t pid = fork();
+	if (pid == 0) // child
+	{
+		/**
+		 * Reset the records file
+		 */
+		char *resetArgs[5];
+		resetArgs[0] = "truncate";
+		resetArgs[1] = "-s";
+		resetArgs[2] = "0";
+		resetArgs[3] = records;
+		resetArgs[4] = NULL;
+		execv("/bin/truncate", resetArgs);
+	}
+	else
+	{
+		/**
+		 * Write record to records file
+		 */
+		wait(NULL);
+		FILE *file = fopen(records, "w");
+		if (file == NULL)
+			printf("Could not open records file.");
+		else
+			fprintf(file, "%d", record);
+		fclose(file);
+	}
+}
+
+int get_record()
+{
+	/**
+	 * Return current hotandcold record
+	 */
+	int record;
+	FILE *file = fopen(records, "r");
+	fscanf(file, "%d", &record);
+	fclose(file);
+	return record;
+}
 
 
 int process_command(struct command_t *command)
@@ -396,6 +443,8 @@ int process_command(struct command_t *command)
 			return SUCCESS;
 		}
 	}
+
+
 
 	// TODO: Implement your custom commands here
 	if (strcmp(command->name, "filesearch") == 0)
@@ -702,6 +751,69 @@ int process_command(struct command_t *command)
 		return SUCCESS;
 	}
 	
+	if (strcmp(command->name, "hotandcold") == 0)
+	{
+		/**
+		 * Takes guesses from user
+		 * If got closer, prints hotter
+		 * If got further, prints closer
+		 */
+		pid_t pid = fork();
+
+		if (pid == 0) // child
+		{
+			int guess, distance, counter, record;
+			counter = 0;
+			srand(time(NULL));		  // Init rand
+			int r = rand() % 100 + 1; // from 1 to 100
+			printf("Make a guess from 1 to 100: ");
+			scanf("%d", &guess);
+			counter++;
+			distance = 100;
+
+			while (guess != r)
+			{
+				// got closer
+				if (abs(guess - r) <= distance)
+					printf("Getting hot!\n");
+				else // got further
+					printf("Getting cold!\n");
+
+				distance = abs(guess - r);
+
+				printf("Make a guess: ");
+				scanf("%d", &guess);
+				counter++;
+			}
+			printf("You guessed in %d tries.\n", counter);
+
+			// Check if it is a new record
+			record = get_record();
+
+			// New Record
+			if ((counter < record) || (record == -1))
+			{
+				printf("Congratulations! That's a new record!\n");
+				update_records(counter);
+			}
+			exit(0);
+		}
+		else
+		{
+			wait(NULL);
+			return SUCCESS;
+		}
+	}
+
+	if (strcmp(command->name, "resetrecord") == 0)
+	{
+		update_records(-1);
+		printf("The record is reset.\n");
+		return SUCCESS;
+	}
+
+	
+	
 	// Custom commands until here
 
 	pid_t pid = fork();
@@ -742,4 +854,3 @@ int process_command(struct command_t *command)
 	printf("-%s: %s: command not found\n", sysname, command->name);
 	return UNKNOWN;
 }
-
