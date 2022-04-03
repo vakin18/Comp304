@@ -812,6 +812,96 @@ int process_command(struct command_t *command)
 		return SUCCESS;
 	}
 
+	if (strcmp(command->name, "pstraverse") == 0)
+	{
+		if (command->arg_count != 2) // Require two parameters
+		{
+			printf("Invalid input.\n");
+			return SUCCESS;
+		}
+
+		if (strcmp(command->args[1], "-b") != 0 && strcmp(command->args[1], "-d") != 0) // If not -b or -d
+		{
+			printf("Invalid input.\n");
+			return SUCCESS;
+		}
+
+		pid_t pid = fork();
+
+		if (pid == 0) // child
+		{
+			char *sudoDmesgArgs[4];
+			sudoDmesgArgs[0] = "sudo";
+			sudoDmesgArgs[1] = "dmesg";
+			sudoDmesgArgs[2] = "-C";
+			sudoDmesgArgs[3] = NULL;
+			execv("/bin/sudo", sudoDmesgArgs);
+			exit(0);
+		}
+		else // parent
+		{
+			wait(NULL);
+			pid = fork();
+			if (pid == 0) // child
+			{
+				/**
+				 * Calls insmod line with parameters
+				 */
+				char pid[10] = "PID=";
+				char *pidVal = command->args[0];
+				strcat(pid, pidVal);
+
+				char traverse[20] = "traverseType=\"";
+				char *traverseVal = command->args[1];
+				strcat(traverse, traverseVal);
+				strcat(traverse, "\"");
+
+				char *insmodArgs[6];
+				insmodArgs[0] = "sudo";
+				insmodArgs[1] = "insmod";
+				insmodArgs[2] = "my_module.ko";
+				insmodArgs[3] = pid;
+				insmodArgs[4] = traverse;
+				insmodArgs[5] = NULL;
+				execv("/bin/sudo", insmodArgs);
+				exit(0);
+			}
+			else // parent
+			{
+				wait(NULL);
+				pid = fork();
+				if (pid == 0) // child
+				{
+					char *rmmodArgs[4];
+					rmmodArgs[0] = "sudo";
+					rmmodArgs[1] = "rmmod";
+					rmmodArgs[2] = "my_module.ko";
+					rmmodArgs[3] = NULL;
+					execv("/bin/sudo", rmmodArgs);
+					exit(0);
+				}
+				else // parent
+				{
+					wait(NULL);
+					pid = fork();
+					if (pid == 0) // child
+					{
+						char *dmesg[2];
+						dmesg[0] = "dmesg";
+						dmesg[1] = NULL;
+						execv("/bin/dmesg", dmesg);
+						exit(0);
+					}
+					else // parent
+					{
+						wait(NULL);
+						return SUCCESS;
+					}
+				}
+			}
+		}
+	}
+
 	
 	
 	// Custom commands until here
