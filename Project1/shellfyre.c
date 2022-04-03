@@ -594,6 +594,43 @@ int process_command(struct command_t *command)
 		}
 	}
 
+	if (strcmp(command->name, "take") == 0)
+	{
+		if (command->arg_count == 1)
+		{
+			pid_t pid = fork();
+
+			if (pid == 0) // child
+			{
+				/**
+				 * Creates directory if does not exist
+				 */
+				char *mkdirArgs[4];
+				mkdirArgs[0] = "mkdir";
+				mkdirArgs[1] = "-p";
+				mkdirArgs[2] = command->args[0];
+				mkdirArgs[3] = NULL;
+				execv("/bin/mkdir", mkdirArgs);
+			}
+
+			else
+			{
+				/**
+				 * Changes directory
+				 * Updates directory history
+				 */
+				wait(NULL);
+				char *cdArgs[2];
+				cdArgs[0] = "cd";
+				cdArgs[1] = command->args[0];
+				r = chdir(command->args[0]);
+				if (r == -1)
+					printf("-%s: %s: %s\n", sysname, "cd", strerror(errno));
+				else
+					save_directory();
+			}
+		}
+	}
 	// Custom commands until here
 
 	pid_t pid = fork();
