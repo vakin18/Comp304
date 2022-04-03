@@ -1,3 +1,14 @@
+/**
+ * @file shellfyre.c
+ * @author Vedat Can Akin - 68633
+ * @brief Custom shell
+ * @version 0.1
+ * @date 2022-04-03
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
+
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdio.h>
